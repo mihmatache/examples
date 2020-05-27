@@ -134,10 +134,7 @@ if [ $DRY_RUN == "true" ]; then
   function cut() { pipe cut $*;}
   function kubectl() {
     if [[ $* =~ (-f|--filename)([[:space:]]+|[[:space:]]*=[[:space:]]*)- ]]; then
-      local all=""
-      while read -r data; do all="$all$data"; done
-      echo "$all | kubectl $*"
-      return
+      pipe kubectl $*;
     fi
     echo "kubectl $*"
   }
@@ -276,14 +273,14 @@ if [ "$NO_ISTIO" == "false" ]; then
   sleep 2
   kubectl --context "$CLUSTER1" wait -n istio-system --timeout=150s --for condition=Ready --all pods
   rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi
-  ./examples/ucnf-kiknos/scripts/start_clients.sh --cluster1="$CLUSTER1" --cluster2="$CLUSTER2" --istio_client
+  bash ./examples/ucnf-kiknos/scripts/start_clients.sh --cluster1="$CLUSTER1" --cluster2="$CLUSTER2" --istio_client
 else
-  ./examples/ucnf-kiknos/scripts/start_clients.sh --cluster1="$CLUSTER1" --cluster2="$CLUSTER2"
+  bash ./examples/ucnf-kiknos/scripts/start_clients.sh --cluster1="$CLUSTER1" --cluster2="$CLUSTER2"
 fi
 rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi
 
 sleep 2
-CLUSTER="$CLUSTER2" SERVICE_NAME="$SERVICE_NAME" ./examples/ucnf-kiknos/scripts/start_vpn.sh
+CLUSTER="$CLUSTER2" SERVICE_NAME="$SERVICE_NAME" bash ./examples/ucnf-kiknos/scripts/start_vpn.sh
 rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi
 
 
