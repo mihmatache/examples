@@ -21,6 +21,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 
 	"github.com/networkservicemesh/networkservicemesh/controlplane/api/connection"
 	"github.com/networkservicemesh/networkservicemesh/controlplane/api/connection/mechanisms/memif"
@@ -28,6 +29,7 @@ import (
 	vpp "go.ligato.io/vpp-agent/v3/proto/ligato/vpp"
 	interfaces "go.ligato.io/vpp-agent/v3/proto/ligato/vpp/interfaces"
 	vpp_l3 "go.ligato.io/vpp-agent/v3/proto/ligato/vpp/l3"
+	vpp_nat "go.ligato.io/vpp-agent/v3/proto/ligato/vpp/nat"
 )
 
 // UniversalCNFVPPAgentBackend is the VPP CNF backend struct
@@ -112,9 +114,10 @@ func (b *UniversalCNFVPPAgentBackend) ProcessEndpoint(
 		ipAddresses = append(ipAddresses, dstIP)
 	}
 
+	endpointIfName := ifName + b.GetEndpointIfID(serviceName)
 	vppconfig.Interfaces = append(vppconfig.Interfaces,
 		&interfaces.Interface{
-			Name:        ifName + b.GetEndpointIfID(serviceName),
+			Name:        endpointIfName,
 			Type:        interfaces.Interface_MEMIF,
 			Enabled:     true,
 			IpAddresses: ipAddresses,
@@ -138,6 +141,47 @@ func (b *UniversalCNFVPPAgentBackend) ProcessEndpoint(
 			NextHopAddr: srcIP.String(),
 		}
 		vppconfig.Routes = append(vppconfig.Routes, route)
+	}
+
+	// NAT configuration
+	// TODO: use better NAT on/off switch
+	if natIP := os.Getenv("NSE_NAT_IP"); natIP != "" {
+		// enable NAT on the interface
+		natIf := &vpp_nat.Nat44Interface{
+			Name:      endpointIfName,
+			NatInside: true,
+		}
+		vppconfig.Nat44Interfaces = append(vppconfig.Nat44Interfaces, natIf)
+
+		// add a static NAT mapping for the ingress gateway
+		for k, v := range conn.Labels {
+			// TODO: match based on some semantic label instead of pod name
+			if k == "podName" && strings.HasPrefix(v, "istio-ingressgateway") {
+				natMapping := &vpp_nat.DNat44{
+					Label: "ingressgateway-mapping",
+					StMappings: []*vpp_nat.DNat44_StaticMapping{
+						{
+							Protocol:     vpp_nat.DNat44_TCP,
+							ExternalIp:   natIP,
+							ExternalPort: 80,
+							LocalIps: []*vpp_nat.DNat44_StaticMapping_LocalIP{
+								{
+									LocalIp:   srcIP.String(),
+									LocalPort: 80,
+								},
+							},
+						},
+					},
+				}
+				vppconfig.Dnat44S = append(vppconfig.Dnat44S, natMapping)
+
+				// TODO: this is a global NAT config - move it to some global init place
+				natPool := &vpp_nat.Nat44AddressPool{
+					FirstIp: natIP,
+				}
+				vppconfig.Nat44Pools = append(vppconfig.Nat44Pools, natPool)
+			}
+		}
 	}
 
 	return nil

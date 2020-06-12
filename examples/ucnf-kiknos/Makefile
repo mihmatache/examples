@@ -2,7 +2,7 @@ include $(TOP)/mk/targets.mk
 
 CLUSTER1?=kiknos-demo-1
 CLUSTER2?=kiknos-demo-2
-ORG=mmatache
+ORG=rastislavszabo
 AWS_KEY_PAIR?=kiknos-asa
 
 
