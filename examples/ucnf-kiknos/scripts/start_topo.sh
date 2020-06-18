@@ -3,7 +3,7 @@
 # Topology information
 CLUSTER1=${CLUSTER1:-kiknos-demo-1}
 CLUSTER2=${CLUSTER2:-kiknos-demo-2}
-VPP_AGENT=${VPP_AGENT:-rastislavszabo/kiknos-sswan:latest}
+VPP_AGENT=${VPP_AGENT:-ciscolabs/kiknos-sswan:latest}
 NSE_ORG=${NSE_ORG:-rastislavszabo}
 NSE_TAG=${NSE_TAG:-kiknos}
 PULL_POLICY=${PULL_POLICY:-IfNotPresent}

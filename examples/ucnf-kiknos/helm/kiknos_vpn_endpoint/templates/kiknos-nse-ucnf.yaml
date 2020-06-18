@@ -192,6 +192,12 @@ metadata:
   name: ucnf-kiknos-{{ .Values.nsm.serviceName }}
 data:
   config.yaml: |
+    {{- if .Values.ucnf.natIP }}
+    initactions:
+    - dpconfig:
+        nat44pools:
+        - firstip: {{ .Values.ucnf.natIP }}
+    {{- end }}
     endpoints:
     - name: {{ .Values.nsm.serviceName | quote }}
       labels:

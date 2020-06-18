@@ -21,7 +21,6 @@ import (
 	"os"
 	"path"
 	"strconv"
-	"strings"
 
 	"github.com/networkservicemesh/networkservicemesh/controlplane/api/connection"
 	"github.com/networkservicemesh/networkservicemesh/controlplane/api/connection/mechanisms/memif"
@@ -144,7 +143,6 @@ func (b *UniversalCNFVPPAgentBackend) ProcessEndpoint(
 	}
 
 	// NAT configuration
-	// TODO: use better NAT on/off switch
 	if natIP := os.Getenv("NSE_NAT_IP"); natIP != "" {
 		// enable NAT on the interface
 		natIf := &vpp_nat.Nat44Interface{
@@ -155,31 +153,29 @@ func (b *UniversalCNFVPPAgentBackend) ProcessEndpoint(
 
 		// add a static NAT mapping for the ingress gateway
 		for k, v := range conn.Labels {
-			// TODO: match based on some semantic label instead of pod name
-			if k == "podName" && strings.HasPrefix(v, "istio-ingressgateway") {
+			if k == "nat-port-forward" {
+				port, err := strconv.Atoi(v)
+				if err != nil {
+					logrus.Errorf("cannot convert port number %s: %v", v, err)
+					continue
+				}
 				natMapping := &vpp_nat.DNat44{
-					Label: "ingressgateway-mapping",
+					Label: k + "-to-" + srcIP.String(),
 					StMappings: []*vpp_nat.DNat44_StaticMapping{
 						{
 							Protocol:     vpp_nat.DNat44_TCP,
 							ExternalIp:   natIP,
-							ExternalPort: 80,
+							ExternalPort: uint32(port),
 							LocalIps: []*vpp_nat.DNat44_StaticMapping_LocalIP{
 								{
 									LocalIp:   srcIP.String(),
-									LocalPort: 80,
+									LocalPort: uint32(port),
 								},
 							},
 						},
 					},
 				}
 				vppconfig.Dnat44S = append(vppconfig.Dnat44S, natMapping)
-
-				// TODO: this is a global NAT config - move it to some global init place
-				natPool := &vpp_nat.Nat44AddressPool{
-					FirstIp: natIP,
-				}
-				vppconfig.Nat44Pools = append(vppconfig.Nat44Pools, natPool)
 			}
 		}
 	}
