@@ -21,6 +21,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 
 	"github.com/networkservicemesh/networkservicemesh/controlplane/api/connection"
 	"github.com/networkservicemesh/networkservicemesh/controlplane/api/connection/mechanisms/memif"
@@ -151,9 +152,9 @@ func (b *UniversalCNFVPPAgentBackend) ProcessEndpoint(
 		}
 		vppconfig.Nat44Interfaces = append(vppconfig.Nat44Interfaces, natIf)
 
-		// add a static NAT mapping for the ingress gateway
+		// add static NAT mappings for port forward requests
 		for k, v := range conn.Labels {
-			if k == "nat-port-forward" {
+			if strings.HasPrefix(k, "nat-port-forward") {
 				port, err := strconv.Atoi(v)
 				if err != nil {
 					logrus.Errorf("cannot convert port number %s: %v", v, err)
@@ -163,7 +164,6 @@ func (b *UniversalCNFVPPAgentBackend) ProcessEndpoint(
 					Label: k + "-to-" + srcIP.String(),
 					StMappings: []*vpp_nat.DNat44_StaticMapping{
 						{
-							Protocol:     vpp_nat.DNat44_TCP,
 							ExternalIp:   natIP,
 							ExternalPort: uint32(port),
 							LocalIps: []*vpp_nat.DNat44_StaticMapping_LocalIP{
@@ -174,6 +174,11 @@ func (b *UniversalCNFVPPAgentBackend) ProcessEndpoint(
 							},
 						},
 					},
+				}
+				if strings.Contains(k, "udp") {
+					natMapping.StMappings[0].Protocol = vpp_nat.DNat44_UDP
+				} else {
+					natMapping.StMappings[0].Protocol = vpp_nat.DNat44_TCP
 				}
 				vppconfig.Dnat44S = append(vppconfig.Dnat44S, natMapping)
 			}
