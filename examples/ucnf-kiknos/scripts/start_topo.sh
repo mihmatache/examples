@@ -3,8 +3,8 @@
 # Topology information
 CLUSTER1=${CLUSTER1:-kiknos-demo-1}
 CLUSTER2=${CLUSTER2:-kiknos-demo-2}
-VPP_AGENT=${VPP_AGENT:-ciscolabs/kiknos:latest}
-NSE_ORG=${NSE_ORG:-mmatache}
+VPP_AGENT=${VPP_AGENT:-ciscolabs/kiknos-sswan:latest}
+NSE_ORG=${NSE_ORG:-rastislavszabo}
 NSE_TAG=${NSE_TAG:-kiknos}
 PULL_POLICY=${PULL_POLICY:-IfNotPresent}
 SERVICE_NAME=${SERVICE_NAME:-hello-world}
@@ -266,8 +266,8 @@ if [ "$BUILD_IMAGE" == "true" ]; then
   fi
 fi
 
-performNSE "$CLUSTER1" $OPERATION --set strongswan.network.localSubnet=172.31.22.0/24 \
-  --set strongswan.network.remoteSubnets="{172.31.23.0/24,192.168.254.0/24}"
+performNSE "$CLUSTER1" $OPERATION --set ucnf.localSubnet=172.31.22.0/24 --set strongswan.network.localSubnet=1.2.3.4/32 \
+  --set strongswan.network.remoteSubnets="{172.31.23.0/24,192.168.254.0/24}" --set ucnf.natIP=1.2.3.4
 
 echo "# Retrieving IP and MAC addr of interface"
 INTERFACE="global eth0"
@@ -289,8 +289,8 @@ if [ "$DEPLOY_ASA" == "true" ] && [ "$AWS" == "true" ]; then
 fi
 
 performNSE "$CLUSTER2" $OPERATION --set strongswan.network.remoteAddr="$IP_ADDR" \
-  --set strongswan.network.localSubnet=172.31.23.0/24 \
-  --set strongswan.network.remoteSubnets="{172.31.22.0/24}"
+  --set ucnf.localSubnet=172.31.23.0/24  --set strongswan.network.localSubnet=172.31.23.0/24 \
+  --set strongswan.network.remoteSubnets="{1.2.3.4/32}"
 
 if [ "$NO_ISTIO" == "false" ]; then
   echo "Installing Istio control plane"
