@@ -2,10 +2,10 @@
 
 CLUSTER1=${CLUSTER1:-kiknos-demo-1}
 CLUSTER2=${CLUSTER2:-kiknos-demo-2}
-
+SERVICE_NAME=${SERVICE_NAME:-hello-world}
 
 print_usage() {
-  echo "$(basename "$0") - Deploy NSM Kiknos topology. All properties can also be provided through env variables
+  echo "$(basename "$0") - Test Istio VPN connectivity. All properties can also be provided through env variables
 
 NOTE: The defaults will change to the env values for the ones set.
 
@@ -25,6 +25,9 @@ for i in "$@"; do
     ;;
   --cluster2=*)
     CLUSTER2="${i#*=}"
+    ;;
+  --service-name=*)
+    SERVICE_NAME="${i#*=}"
     ;;
   -h | --help)
     print_usage
@@ -51,7 +54,7 @@ for hello in $(kubectl --context "$CLUSTER1" get pods -n istio-system -l app=ist
   helloIPs+=("$podIp")
 done
 
-for hello in $(kubectl --context "$CLUSTER2" get pods -l app=icmp-responder -o=name); do
+for hello in $(kubectl --context "$CLUSTER2" get pods -l "app=$SERVICE_NAME" -o=name); do
   for ip in "${helloIPs[@]}"; do
     echo "------------------------- Source $hello -------------------------"
     curl_to "$CLUSTER2" "http://$ip/hello"
